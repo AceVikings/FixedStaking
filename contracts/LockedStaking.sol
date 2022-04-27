@@ -9,6 +9,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 contract LockedStaking is Ownable,ReentrancyGuard{
 
     IERC20 Token;
+    IERC20 RewardToken;
 
     struct info{
         uint amount;
@@ -20,7 +21,8 @@ contract LockedStaking is Ownable,ReentrancyGuard{
 
     uint[3] public durations = [90 days,180 days, 360 days];
     uint[3] public rate = [20,30,40];
-    uint public lockedAmount;
+
+    uint public slashedAmount;
 
     mapping(address=>mapping(uint=>info)) public userStaked; //USER > ID > INFO
     mapping(address=>uint) public userId;
@@ -28,8 +30,9 @@ contract LockedStaking is Ownable,ReentrancyGuard{
 
     bool public pause;
 
-    constructor(address _token) {
+    constructor(address _token,address _reward) {
         Token = IERC20(_token);
+        RewardToken = IERC20(_reward);
     }
 
     function stake(uint[] memory _amount,uint[] memory _duration) external {
@@ -44,7 +47,6 @@ contract LockedStaking is Ownable,ReentrancyGuard{
             userStaked[msg.sender][userId[msg.sender]] = info(_amount[i],block.timestamp,block.timestamp,_duration[i],stakedIds[msg.sender].length);
             stakedIds[msg.sender].push(userId[msg.sender]);
         }
-        lockedAmount += amount;
         require(Token.transferFrom(msg.sender,address(this),amount),"Amount not sent");
     }
 
@@ -63,7 +65,7 @@ contract LockedStaking is Ownable,ReentrancyGuard{
             amount += getReward(msg.sender, _ids[i]);
             userInfo.lastClaim = block.timestamp;
         }
-        Token.transfer(msg.sender,amount);
+        RewardToken.transfer(msg.sender,amount);
     }
 
     function unstake(uint[] memory _ids) external nonReentrant{
@@ -78,7 +80,22 @@ contract LockedStaking is Ownable,ReentrancyGuard{
             popSlot(_ids[i]);
             delete userStaked[msg.sender][_ids[i]];
         }
-        lockedAmount -= amount;
+        Token.transfer(msg.sender,amount);
+    }
+
+    function forceUnstake(uint[] memory _ids) external nonReentrant{
+        claimReward(_ids);
+        uint length = _ids.length;
+        uint amount = 0;
+        for(uint i=0;i<length;i++){
+            info storage userInfo = userStaked[msg.sender][_ids[i]];
+            require(userInfo.amount != 0,"Invalid ID");
+            require(block.timestamp - userInfo.stakeTime < durations[userInfo.durationCode],"Already unlocked");
+            amount += userInfo.amount/2;
+            slashedAmount += userInfo.amount - userInfo.amount/2;
+            popSlot(_ids[i]);
+            delete userStaked[msg.sender][_ids[i]];
+        }
         Token.transfer(msg.sender,amount);
     }
 
@@ -95,7 +112,13 @@ contract LockedStaking is Ownable,ReentrancyGuard{
     }
 
     function retrieveToken() external onlyOwner{
-        Token.transfer(msg.sender,Token.balanceOf(address(this))-lockedAmount);
+        RewardToken.transfer(msg.sender,RewardToken.balanceOf(address(this)));
+    }
+
+    function retrieveSlashedToken() external onlyOwner{
+        uint amount = slashedAmount;
+        slashedAmount = 0;
+        Token.transfer(msg.sender,amount);
     }
 
     function Pause(bool _pause) external onlyOwner {
