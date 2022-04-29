@@ -36,7 +36,7 @@ contract LockedStaking is Ownable,ReentrancyGuard{
     constructor(address _token,address _reward) {
         Token = IERC20(_token);
         RewardToken = IERC20(_reward);
-        uint[3] memory firstRate = [20,30,40];
+        uint8[3] memory firstRate = [20,30,40];
         rate.push(firstRate);
         time.push(block.timestamp);
     }
