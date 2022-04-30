@@ -5,6 +5,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/interfaces/IERC20.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "hardhat/console.sol";
 
 contract LockedStaking is Ownable,ReentrancyGuard{
 
@@ -20,7 +21,7 @@ contract LockedStaking is Ownable,ReentrancyGuard{
         uint rateIndex;
     }
 
-    uint[3] public durations = [90 days,180 days, 360 days];
+    uint[3] public durations = [90 days, 180 days, 360 days];
     uint[][] public rate;
     uint[] public time;
 
@@ -112,7 +113,7 @@ contract LockedStaking is Ownable,ReentrancyGuard{
             require(userInfo.amount != 0,"Invalid ID");
             require(block.timestamp - userInfo.stakeTime < durations[userInfo.durationCode],"Already unlocked");
             amount += userInfo.amount*(100-slashRate)/100;
-            slashedAmount += userInfo.amount - userInfo.amount/2;
+            slashedAmount += userInfo.amount - userInfo.amount*(100-slashRate)/100;
             popSlot(_ids[i]);
             delete userStaked[msg.sender][_ids[i]];
         }
