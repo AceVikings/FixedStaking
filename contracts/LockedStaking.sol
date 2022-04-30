@@ -112,7 +112,7 @@ contract LockedStaking is Ownable,ReentrancyGuard{
             require(userInfo.amount != 0,"Invalid ID");
             require(block.timestamp - userInfo.stakeTime < durations[userInfo.durationCode],"Already unlocked");
             amount += userInfo.amount*(100-slashRate)/100;
-            slashedAmount += userInfo.amount - userInfo.amount/2;
+            slashedAmount += userInfo.amount - userInfo.amount*(100-slashRate)/100;
             popSlot(_ids[i]);
             delete userStaked[msg.sender][_ids[i]];
         }
