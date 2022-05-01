@@ -71,7 +71,12 @@ contract LockedStaking is Ownable,ReentrancyGuard{
             }
             currentTime = i;
         }
-        collected += (block.timestamp - time[currentTime])*rate[currentTime][userInfo.durationCode];
+        if(collected == 0){
+            collected += (block.timestamp - userInfo.lastClaim)*rate[currentTime][userInfo.durationCode];
+        }
+        else{
+            collected += (block.timestamp - time[currentTime])*rate[currentTime][userInfo.durationCode];
+        }
         return collected*userInfo.amount/(360 days * 100);
     }
 
