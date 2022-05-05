@@ -132,9 +132,15 @@ contract LockedStaking is Ownable,ReentrancyGuard{
         stakedIds[msg.sender].pop();
     }
 
+    function getStakedIds(address _user) external view returns(uint[] memory){
+        return stakedIds[_user];
+    }
+
+
     function setToken(address _token) external onlyOwner{
         Token = IERC20(_token);
     }
+
 
     function retrieveToken() external onlyOwner{
         RewardToken.transfer(msg.sender,RewardToken.balanceOf(address(this)));
