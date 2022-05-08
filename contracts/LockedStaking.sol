@@ -48,6 +48,7 @@ contract LockedStaking is Ownable,ReentrancyGuard{
         uint amount = 0;
         for(uint i = 0;i< length;i++){
             require(_duration[i] < 3,"Invalid duration");
+            require(_amount[i] != 0,"Can't stake 0");
             userId[msg.sender]++;
             amount += _amount[i];
             userStaked[msg.sender][userId[msg.sender]] = info(_amount[i],block.timestamp,block.timestamp,_duration[i],stakedIds[msg.sender].length,time.length-1);
@@ -124,6 +125,20 @@ contract LockedStaking is Ownable,ReentrancyGuard{
         Token.transfer(msg.sender,amount);
     }
 
+    function emergencyUnstake(uint[] memory _ids) external nonReentrant{
+        uint length = _ids.length;
+        uint amount = 0;
+        for(uint i=0;i<length;i++){
+            info storage userInfo = userStaked[msg.sender][_ids[i]];
+            require(userInfo.amount != 0,"Invalid ID");
+            require(block.timestamp - userInfo.stakeTime >= durations[userInfo.durationCode],"Not unlocked yet");
+            amount += userInfo.amount;
+            popSlot(_ids[i]);
+            delete userStaked[msg.sender][_ids[i]];
+        }
+        Token.transfer(msg.sender,amount);
+    }
+
     function popSlot(uint _id) private {
         uint lastID = stakedIds[msg.sender][stakedIds[msg.sender].length - 1];
         uint currentPos = userStaked[msg.sender][_id].position;
@@ -141,6 +156,9 @@ contract LockedStaking is Ownable,ReentrancyGuard{
         Token = IERC20(_token);
     }
 
+    function setRewardToken(address _token) external onlyOwner{
+        RewardToken = IERC20(_token);
+    }
 
     function retrieveToken() external onlyOwner{
         RewardToken.transfer(msg.sender,RewardToken.balanceOf(address(this)));
