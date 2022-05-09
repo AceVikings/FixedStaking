@@ -31,12 +31,14 @@ contract LockedStaking is Ownable,ReentrancyGuard{
     mapping(address=>uint) public userId;
     mapping(address=>uint[]) public stakedIds;
 
+    address multiSig = 0x8e5C8c48a249B49283C385Be67F93217796EaAdc;
+
     bool public pause;
 
     constructor(address _token,address _reward) {
         Token = IERC20(_token);
         RewardToken = IERC20(_reward);
-        uint8[3] memory firstRate = [20,30,40];
+        uint8[3] memory firstRate = [40,50,60];
         rate.push(firstRate);
         time.push(block.timestamp);
     }
@@ -161,13 +163,18 @@ contract LockedStaking is Ownable,ReentrancyGuard{
     }
 
     function retrieveToken() external onlyOwner{
-        RewardToken.transfer(msg.sender,RewardToken.balanceOf(address(this)));
+        RewardToken.transfer(multiSig,RewardToken.balanceOf(address(this)));
     }
 
     function retrieveSlashedToken() external onlyOwner{
         uint amount = slashedAmount;
         slashedAmount = 0;
-        Token.transfer(msg.sender,amount);
+        Token.transfer(multiSig,amount);
+    }
+
+    function setMultiSig(address _newSig) external {
+        require(msg.sender == multiSig,"Not multiSig");
+        multiSig = _newSig;
     }
 
     function setSlashRate(uint _rate) external onlyOwner{
